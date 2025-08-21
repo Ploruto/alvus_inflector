@@ -251,7 +251,11 @@ fn apply_rules_inner(str: String, rules: List(Rule)) -> String {
   }
 }
 
-fn apply_replacement(pattern: Regexp, str: String, replacement: String) -> String {
+fn apply_replacement(
+  pattern: Regexp,
+  str: String,
+  replacement: String,
+) -> String {
   case string.contains(replacement, "$") {
     False -> regexp.replace(each: pattern, in: str, with: replacement)
     True -> {
@@ -262,7 +266,10 @@ fn apply_replacement(pattern: Regexp, str: String, replacement: String) -> Strin
   }
 }
 
-fn substitute_captures(replacement: String, captures: List(Option(String))) -> String {
+fn substitute_captures(
+  replacement: String,
+  captures: List(Option(String)),
+) -> String {
   list.index_fold(captures, replacement, fn(acc, capture, index) {
     let placeholder = "$" <> int.to_string(index + 1)
     case capture {
@@ -277,7 +284,10 @@ fn create_plural_rules() -> List(Rule) {
   let assert Ok(people) = compile_regex("(pe)ople$")
   let assert Ok(children) = compile_regex("(child)ren$")
   let assert Ok(tia) = compile_regex("([ti])a$")
-  let assert Ok(analyses) = compile_regex("((a)naly|(b)a|(d)iagno|(p)arenthe|(p)rogno|(s)ynop|(t)he)ses$")
+  let assert Ok(analyses) =
+    compile_regex(
+      "((a)naly|(b)a|(d)iagno|(p)arenthe|(p)rogno|(s)ynop|(t)he)ses$",
+    )
   let assert Ok(databases) = compile_regex("(database)s$")
   let assert Ok(drives) = compile_regex("(drive)s$")
   let assert Ok(hives) = compile_regex("(hi|ti)ves$")
@@ -419,7 +429,10 @@ fn create_singular_rules() -> List(Rule) {
   let assert Ok(people) = compile_regex("(pe)ople$")
   let assert Ok(children) = compile_regex("(child)ren$")
   let assert Ok(tia) = compile_regex("([ti])a$")
-  let assert Ok(analyses) = compile_regex("((a)naly|(b)a|(d)iagno|(p)arenthe|(p)rogno|(s)ynop|(t)he)ses$")
+  let assert Ok(analyses) =
+    compile_regex(
+      "((a)naly|(b)a|(d)iagno|(p)arenthe|(p)rogno|(s)ynop|(t)he)ses$",
+    )
   let assert Ok(databases) = compile_regex("(database)s$")
   let assert Ok(drives) = compile_regex("(drive)s$")
   let assert Ok(hives) = compile_regex("(hi|ti)ves$")
@@ -563,32 +576,43 @@ pub fn singularize(str: String, singular: Option(String)) -> String {
   apply_rules(str, create_singular_rules(), uncountable_words, singular)
 }
 
-pub fn inflect(str: String, count: Int, singular: Option(String), plural: Option(String)) -> String {
+pub fn inflect(
+  str: String,
+  count: Int,
+  singular: Option(String),
+  plural: Option(String),
+) -> String {
   case count {
     1 -> apply_rules(str, create_singular_rules(), uncountable_words, singular)
     _ -> apply_rules(str, create_plural_rules(), uncountable_words, plural)
   }
 }
 
-pub fn camelize(str: String, low_first_letter: Bool) -> String {
+pub fn camelize(
+  str str: String,
+  first_letter_low low_first_letter: Bool,
+) -> String {
   let str_path = string.split(str, "/")
-  let result = list.map(str_path, fn(path_part) {
-    let str_arr = string.split(path_part, "_")
-    let result = list.index_map(str_arr, fn(part, index) {
-      let capitalized = capitalize_first_char(part)
-      case index == 0 && low_first_letter {
-        True -> case string.first(capitalized) {
-          Ok(first_char) -> {
-            let rest = string.drop_start(capitalized, 1)
-            string.lowercase(first_char) <> rest
+  let result =
+    list.map(str_path, fn(path_part) {
+      let str_arr = string.split(path_part, "_")
+      let result =
+        list.index_map(str_arr, fn(part, index) {
+          let capitalized = capitalize_first_char(part)
+          case index == 0 && low_first_letter {
+            True ->
+              case string.first(capitalized) {
+                Ok(first_char) -> {
+                  let rest = string.drop_start(capitalized, 1)
+                  string.lowercase(first_char) <> rest
+                }
+                Error(_) -> capitalized
+              }
+            False -> capitalized
           }
-          Error(_) -> capitalized
-        }
-        False -> capitalized
-      }
+        })
+      string.join(result, "")
     })
-    string.join(result, "")
-  })
   string.join(result, "::")
 }
 
@@ -607,16 +631,23 @@ pub fn underscore(str: String, all_upper_case: Bool) -> String {
     True -> str
     False -> {
       let str_path = string.split(str, "::")
-      let result = list.map(str_path, fn(part) {
-        let assert Ok(uppercase_re) = compile_regex("([A-Z])")
-        let assert Ok(underbar_prefix_re) = compile_regex("^_")
-        
-        let with_underscores = regexp.match_map(each: uppercase_re, in: part, with: fn(match) {
-          "_" <> string.lowercase(match.content)
+      let result =
+        list.map(str_path, fn(part) {
+          let assert Ok(uppercase_re) = compile_regex("([A-Z])")
+          let assert Ok(underbar_prefix_re) = compile_regex("^_")
+
+          let with_underscores =
+            regexp.match_map(each: uppercase_re, in: part, with: fn(match) {
+              "_" <> string.lowercase(match.content)
+            })
+          let cleaned =
+            regexp.replace(
+              each: underbar_prefix_re,
+              in: with_underscores,
+              with: "",
+            )
+          string.lowercase(cleaned)
         })
-        let cleaned = regexp.replace(each: underbar_prefix_re, in: with_underscores, with: "")
-        string.lowercase(cleaned)
-      })
       string.join(result, "/")
     }
   }
@@ -625,11 +656,11 @@ pub fn underscore(str: String, all_upper_case: Bool) -> String {
 pub fn humanize(str: String, low_first_letter: Bool) -> String {
   let assert Ok(id_suffix_re) = compile_regex("(_ids|_id)$")
   let assert Ok(underbar_re) = compile_regex("_")
-  
+
   let str = string.lowercase(str)
   let str = regexp.replace(each: id_suffix_re, in: str, with: "")
   let str = regexp.replace(each: underbar_re, in: str, with: " ")
-  
+
   case low_first_letter {
     True -> str
     False -> capitalize(str)
@@ -653,29 +684,54 @@ pub fn dasherize(str: String) -> String {
 }
 
 pub const non_titlecased_words = [
-  "and", "or", "nor", "a", "an", "the", "so", "but", "to", "of", "at", "by",
-  "from", "into", "on", "onto", "off", "out", "in", "over", "with", "for"
+  "and",
+  "or",
+  "nor",
+  "a",
+  "an",
+  "the",
+  "so",
+  "but",
+  "to",
+  "of",
+  "at",
+  "by",
+  "from",
+  "into",
+  "on",
+  "onto",
+  "off",
+  "out",
+  "in",
+  "over",
+  "with",
+  "for",
 ]
 
 pub fn titleize(str: String) -> String {
   let assert Ok(underbar_re) = compile_regex("_")
-  let str = string.lowercase(str) |> regexp.replace(each: underbar_re, with: " ")
+  let str =
+    string.lowercase(str) |> regexp.replace(each: underbar_re, with: " ")
   let str_arr = string.split(str, " ")
-  
-  let result = list.index_map(str_arr, fn(word, index) {
-    let d = string.split(word, "-")
-    let processed = list.map(d, fn(part) {
-      case index == 0 {
-        True -> capitalize(part)  // Always capitalize first word
-        False -> case list.contains(non_titlecased_words, string.lowercase(part)) {
-          True -> part
-          False -> capitalize(part)
-        }
-      }
+
+  let result =
+    list.index_map(str_arr, fn(word, index) {
+      let d = string.split(word, "-")
+      let processed =
+        list.map(d, fn(part) {
+          case index == 0 {
+            True -> capitalize(part)
+            // Always capitalize first word
+            False ->
+              case list.contains(non_titlecased_words, string.lowercase(part)) {
+                True -> part
+                False -> capitalize(part)
+              }
+          }
+        })
+      string.join(processed, "-")
     })
-    string.join(processed, "-")
-  })
-  
+
   string.join(result, " ")
 }
 
@@ -710,31 +766,33 @@ pub fn foreign_key(str: String, drop_id_ubar: Bool) -> String {
 
 pub fn ordinalize(str: String) -> String {
   let str_arr = string.split(str, " ")
-  let result = list.map(str_arr, fn(word) {
-    case int.parse(word) {
-      Ok(k) -> {
-        let word_str = int.to_string(k)
-        let ltd = case string.length(word_str) >= 2 {
-          True -> string.slice(word_str, string.length(word_str) - 2, 2)
-          False -> ""
-        }
-        let ld = string.slice(word_str, string.length(word_str) - 1, 1)
-        
-        let suf = case ltd != "11" && ltd != "12" && ltd != "13" {
-          True -> case ld {
-            "1" -> "st"
-            "2" -> "nd"
-            "3" -> "rd"
-            _ -> "th"
+  let result =
+    list.map(str_arr, fn(word) {
+      case int.parse(word) {
+        Ok(k) -> {
+          let word_str = int.to_string(k)
+          let ltd = case string.length(word_str) >= 2 {
+            True -> string.slice(word_str, string.length(word_str) - 2, 2)
+            False -> ""
           }
-          False -> "th"
+          let ld = string.slice(word_str, string.length(word_str) - 1, 1)
+
+          let suf = case ltd != "11" && ltd != "12" && ltd != "13" {
+            True ->
+              case ld {
+                "1" -> "st"
+                "2" -> "nd"
+                "3" -> "rd"
+                _ -> "th"
+              }
+            False -> "th"
+          }
+
+          word <> suf
         }
-        
-        word <> suf
+        Error(_) -> word
       }
-      Error(_) -> word
-    }
-  })
+    })
   string.join(result, " ")
 }
 
